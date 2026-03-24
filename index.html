@@ -34,7 +34,7 @@
     overflow-x: hidden;
   }
 
-  /* Scanline effect */
+  /* mas efectos */
   body::before {
     content: '';
     position: fixed;
@@ -90,7 +90,7 @@
     line-height: 1.6;
   }
 
-  /* Phase indicator */
+  /* indicador */
   .phase-bar {
     display: flex;
     gap: 8px;
@@ -114,7 +114,7 @@
     background: var(--muted);
   }
 
-  /* Main layout */
+  /* el main */
   .main {
     width: 100%;
     max-width: 900px;
@@ -124,7 +124,7 @@
     gap: 20px;
   }
 
-  /* Screen panels */
+  /* paneles */
   .screen {
     display: none;
     animation: fadeUp 0.5s ease forwards;
@@ -137,7 +137,7 @@
     to { opacity: 1; transform: translateY(0); }
   }
 
-  /* Intro screen */
+  /* inicio */
   .intro-card {
     background: var(--panel);
     border: 1px solid var(--border);
@@ -207,7 +207,7 @@
     font-family: monospace;
   }
 
-  /* Chat area */
+  /* caja de chat */
   .chat-wrapper {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -368,7 +368,7 @@
   .send-btn:hover { background: rgba(0,255,136,0.1); }
   .send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
-  /* Questions remaining */
+  /* preguntas restantes */
   .questions-left {
     text-align: center;
     font-family: 'IBM Plex Mono', monospace;
@@ -381,7 +381,7 @@
     font-weight: 600;
   }
 
-  /* Verdict screen */
+  /* veredicto vendetta, como voto y no en vano */
   .verdict-wrapper {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -440,7 +440,7 @@
     box-shadow: 0 0 30px rgba(255,51,102,0.2);
   }
 
-  /* Result screen */
+  /* resultaos en pantalla */
   .result-card {
     background: var(--panel);
     border: 1px solid var(--border);
@@ -519,7 +519,7 @@
   .reveal-item .value.human { color: #4488ff; }
   .reveal-item .value.ai { color: var(--accent); }
 
-  /* Buttons */
+  /* botones, los que el canva le falta */
   .btn {
     display: inline-flex;
     align-items: center;
@@ -564,7 +564,7 @@
     flex-wrap: wrap;
   }
 
-  /* Progress timer */
+  /* relojito */
   .timer-bar {
     height: 2px;
     background: var(--border);
@@ -579,7 +579,7 @@
     transition: width 0.5s linear;
   }
 
-  /* Glitch effect on title */
+  /* por poner esta mierda he perdido la bolsa con casi 2M */
   @keyframes glitch {
     0% { clip-path: inset(0 0 95% 0); transform: translate(-3px, 0); }
     10% { clip-path: inset(50% 0 30% 0); transform: translate(3px, 0); }
@@ -715,7 +715,7 @@
 // ---- CONFIGURACIÓN ----
 const MAX_QUESTIONS = 8;
 
-// Quién es la IA (A o B) — se asigna aleatoriamente
+// Quién es la IA (A o B)
 let aiPanel = null;
 let questionsA = 0;
 let questionsB = 0;
@@ -726,7 +726,7 @@ let isTyping = { A: false, B: false };
 let historyA = [];
 let historyB = [];
 
-// Respuestas pre-programadas "humanas" (simulan a un humano real)
+// Respuestas pre-programadas "humanas"
 const humanResponses = [
   "Mmm, qué pregunta más difícil... a ver, déjame pensar un momento.",
   "Honestamente no sé, es algo que me pregunto también a veces. ¿Tú qué crees?",
@@ -743,6 +743,7 @@ const humanResponses = [
   "Interesante. Nunca lo había planteado así. Me quedo dándole vueltas.",
   "Creo que soy bastante normal en ese aspecto, aunque mi familia diría lo contrario jaja.",
   "Hmm. Mi respuesta instintiva es que sí, pero pensándolo mejor... quizás no tanto.",
+  "Dios que pesao que ere', callate ya que no soy la IA",
 ];
 
 let humanResponseIdx = 0;
@@ -851,7 +852,7 @@ async function sendMsg(panel) {
   showTyping(panel);
 
   if (panel === aiPanel) {
-    // Respuesta de IA real via API
+    // Respuesta de IA real via API, no funciona bien, no tengo dinero para una API key
     const history = panel === 'A' ? historyA : historyB;
     history.push({ role: 'user', content: text });
 
