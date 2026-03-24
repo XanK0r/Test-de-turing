@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test de Turing</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,600;1,300&family=Space+Grotesk:wght@300;400;700&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --panel: #111118;
+    --border: #2a2a3a;
+    --accent: #00ff88;
+    --accent2: #ff3366;
+    --text: #e0e0f0;
+    --muted: #555570;
+    --bubble-human: #1a1a2e;
+    --bubble-ai: #0d1f15;
+    --glow: rgba(0,255,136,0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0;
+    overflow-x: hidden;
+  }
+
+  /* Scanline effect */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.05) 2px,
+      rgba(0,0,0,0.05) 4px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  header {
+    width: 100%;
+    max-width: 900px;
+    padding: 40px 24px 24px;
+    text-align: center;
+    position: relative;
+  }
+
+  .tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    opacity: 0.8;
+  }
+
+  h1 {
+    font-size: clamp(32px, 6vw, 60px);
+    font-weight: 700;
+    letter-spacing: -2px;
+    line-height: 1;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, #fff 40%, var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .subtitle {
+    font-size: 14px;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    font-style: italic;
+    max-width: 500px;
+    margin: 0 auto 32px;
+    line-height: 1.6;
+  }
+
+  /* Phase indicator */
+  .phase-bar {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+
+  .phase-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: all 0.4s ease;
+  }
+
+  .phase-dot.active {
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent);
+  }
+
+  .phase-dot.done {
+    background: var(--muted);
+  }
+
+  /* Main layout */
+  .main {
+    width: 100%;
+    max-width: 900px;
+    padding: 0 24px 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* Screen panels */
+  .screen {
+    display: none;
+    animation: fadeUp 0.5s ease forwards;
+  }
+
+  .screen.active { display: flex; flex-direction: column; gap: 20px; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Intro screen */
+  .intro-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 36px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .intro-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+
+  .intro-card h2 {
+    font-size: 20px;
+    margin-bottom: 16px;
+    font-weight: 700;
+  }
+
+  .intro-card p {
+    color: var(--muted);
+    line-height: 1.7;
+    font-size: 15px;
+    margin-bottom: 12px;
+  }
+
+  .rules {
+    background: rgba(0,255,136,0.05);
+    border: 1px solid rgba(0,255,136,0.2);
+    border-radius: 4px;
+    padding: 20px;
+    margin-top: 20px;
+  }
+
+  .rules h3 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+
+  .rules ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .rules ul li {
+    font-size: 14px;
+    color: var(--text);
+    padding-left: 20px;
+    position: relative;
+    line-height: 1.5;
+  }
+
+  .rules ul li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-family: monospace;
+  }
+
+  /* Chat area */
+  .chat-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 600px) {
+    .chat-wrapper { grid-template-columns: 1fr; }
+  }
+
+  .chat-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    height: 420px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+
+  .chat-panel:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 20px var(--glow);
+  }
+
+  .chat-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .panel-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .msg {
+    max-width: 85%;
+    padding: 10px 14px;
+    border-radius: 2px;
+    font-size: 14px;
+    line-height: 1.5;
+    animation: msgIn 0.3s ease;
+  }
+
+  @keyframes msgIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg.user {
+    background: var(--bubble-human);
+    border: 1px solid #2a2a40;
+    align-self: flex-end;
+    color: var(--text);
+  }
+
+  .msg.interlocutor {
+    background: var(--bubble-ai);
+    border: 1px solid #1a3a2a;
+    align-self: flex-start;
+    color: #b0f0c8;
+  }
+
+  .msg-sender {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .typing {
+    display: flex;
+    gap: 5px;
+    padding: 10px 14px;
+    align-self: flex-start;
+  }
+
+  .typing span {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: bounce 1s infinite;
+  }
+
+  .typing span:nth-child(2) { animation-delay: 0.15s; }
+  .typing span:nth-child(3) { animation-delay: 0.3s; }
+
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); opacity: 0.4; }
+    50% { transform: translateY(-6px); opacity: 1; }
+  }
+
+  .chat-input-area {
+    display: flex;
+    gap: 0;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .chat-input-area input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: 12px 16px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+  }
+
+  .chat-input-area input::placeholder { color: var(--muted); }
+
+  .send-btn {
+    background: transparent;
+    border: none;
+    border-left: 1px solid var(--border);
+    color: var(--accent);
+    padding: 12px 16px;
+    cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    transition: background 0.2s;
+  }
+
+  .send-btn:hover { background: rgba(0,255,136,0.1); }
+  .send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* Questions remaining */
+  .questions-left {
+    text-align: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .questions-left span {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* Verdict screen */
+  .verdict-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 600px) {
+    .verdict-wrapper { grid-template-columns: 1fr; }
+  }
+
+  .verdict-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 28px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .verdict-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 30px var(--glow);
+    transform: translateY(-3px);
+  }
+
+  .verdict-card .icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    display: block;
+  }
+
+  .verdict-card h3 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .verdict-card p {
+    color: var(--muted);
+    font-size: 13px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .verdict-card.selected-human {
+    border-color: #4488ff;
+    background: rgba(68,136,255,0.08);
+    box-shadow: 0 0 30px rgba(68,136,255,0.2);
+  }
+
+  .verdict-card.selected-ai {
+    border-color: var(--accent2);
+    background: rgba(255,51,102,0.08);
+    box-shadow: 0 0 30px rgba(255,51,102,0.2);
+  }
+
+  /* Result screen */
+  .result-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 48px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .result-emoji {
+    font-size: 72px;
+    margin-bottom: 24px;
+    display: block;
+    animation: pop 0.5s cubic-bezier(0.68,-0.55,0.265,1.55);
+  }
+
+  @keyframes pop {
+    from { transform: scale(0); }
+    to { transform: scale(1); }
+  }
+
+  .result-title {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    letter-spacing: -1px;
+  }
+
+  .result-correct { color: var(--accent); }
+  .result-wrong { color: var(--accent2); }
+
+  .result-desc {
+    color: var(--muted);
+    font-size: 15px;
+    max-width: 480px;
+    margin: 0 auto 32px;
+    line-height: 1.7;
+    font-family: 'IBM Plex Mono', monospace;
+    font-style: italic;
+  }
+
+  .reveal-box {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px;
+    margin: 20px 0;
+    text-align: left;
+    max-width: 500px;
+    margin: 0 auto 32px;
+  }
+
+  .reveal-box h4 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+
+  .reveal-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+
+  .reveal-item:last-child { border-bottom: none; }
+
+  .reveal-item .label { color: var(--muted); }
+  .reveal-item .value { font-family: 'IBM Plex Mono', monospace; }
+  .reveal-item .value.human { color: #4488ff; }
+  .reveal-item .value.ai { color: var(--accent); }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 32px;
+    background: var(--accent);
+    color: #0a0a0f;
+    border: none;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.2s;
+  }
+
+  .btn:hover {
+    background: #00cc6a;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(0,255,136,0.3);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-ghost:hover {
+    background: var(--panel);
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 8px 20px var(--glow);
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  /* Progress timer */
+  .timer-bar {
+    height: 2px;
+    background: var(--border);
+    border-radius: 0;
+    overflow: hidden;
+    margin-bottom: 4px;
+  }
+
+  .timer-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #00ff55);
+    transition: width 0.5s linear;
+  }
+
+  /* Glitch effect on title */
+  @keyframes glitch {
+    0% { clip-path: inset(0 0 95% 0); transform: translate(-3px, 0); }
+    10% { clip-path: inset(50% 0 30% 0); transform: translate(3px, 0); }
+    20% { clip-path: inset(80% 0 5% 0); transform: translate(-2px, 0); }
+    30% { clip-path: inset(0 0 0 0); transform: translate(0, 0); }
+    100% { clip-path: inset(0 0 0 0); transform: translate(0, 0); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="tag">// experimento mental :: 1950</div>
+  <h1>Test de Turing</h1>
+  <p class="subtitle">¿Puedes distinguir una mente artificial de una humana?</p>
+  <div class="phase-bar">
+    <div class="phase-dot active" id="dot0"></div>
+    <div class="phase-dot" id="dot1"></div>
+    <div class="phase-dot" id="dot2"></div>
+    <div class="phase-dot" id="dot3"></div>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- PANTALLA 0: INTRO -->
+  <div class="screen active" id="screen-intro">
+    <div class="intro-card">
+      <h2>El Juego de la Imitación</h2>
+      <p>En 1950, Alan Turing propuso un experimento: si una máquina puede conversar de forma indistinguible de un humano, ¿deberíamos considerarla pensante?</p>
+      <p>En este test hablarás simultáneamente con <strong>dos interlocutores desconocidos</strong>: uno es humano (respuestas simuladas) y el otro es una IA real. Tu misión es descubrir cuál es cuál.</p>
+      <div class="rules">
+        <h3>// instrucciones</h3>
+        <ul>
+          <li>Tienes <strong>8 preguntas</strong> para hacer a cada interlocutor.</li>
+          <li>Puedes preguntar lo que quieras: filosofía, emociones, absurdeces, trampas...</li>
+          <li>Al terminar, deberás votar quién crees que es la IA.</li>
+          <li>Ambos interlocutores intentarán convencerte de que son humanos.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" onclick="startTest()">Iniciar experimento →</button>
+    </div>
+  </div>
+
+  <!-- PANTALLA 1: CHAT -->
+  <div class="screen" id="screen-chat">
+    <div class="timer-bar"><div class="timer-fill" id="timer-fill" style="width:100%"></div></div>
+    <p class="questions-left">Preguntas restantes: <span id="q-left">8</span> / 8</p>
+    <div class="chat-wrapper">
+      <div class="chat-panel" id="panel-A">
+        <div class="chat-panel-header">
+          <span class="panel-label">Interlocutor A</span>
+          <div class="status-dot"></div>
+        </div>
+        <div class="messages" id="msgs-A"></div>
+        <div class="chat-input-area">
+          <input type="text" id="input-A" placeholder="Escribe tu pregunta..." onkeydown="if(event.key==='Enter') sendMsg('A')">
+          <button class="send-btn" id="btn-A" onclick="sendMsg('A')">enviar</button>
+        </div>
+      </div>
+      <div class="chat-panel" id="panel-B">
+        <div class="chat-panel-header">
+          <span class="panel-label">Interlocutor B</span>
+          <div class="status-dot"></div>
+        </div>
+        <div class="messages" id="msgs-B"></div>
+        <div class="chat-input-area">
+          <input type="text" id="input-B" placeholder="Escribe tu pregunta..." onkeydown="if(event.key==='Enter') sendMsg('B')">
+          <button class="send-btn" id="btn-B" onclick="sendMsg('B')">enviar</button>
+        </div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="goToVerdict()" id="verdict-btn">Emitir veredicto →</button>
+    </div>
+  </div>
+
+  <!-- PANTALLA 2: VEREDICTO -->
+  <div class="screen" id="screen-verdict">
+    <div class="intro-card">
+      <h2>Momento de la verdad</h2>
+      <p style="color: var(--muted);">Has completado las conversaciones. Ahora debes decidir: ¿cuál de los dos interlocutores es una inteligencia artificial?</p>
+    </div>
+    <div class="verdict-wrapper">
+      <div class="verdict-card" id="vote-A" onclick="selectVerdict('A')">
+        <span class="icon">🤖</span>
+        <h3>Interlocutor A es la IA</h3>
+        <p>// sospecho de A</p>
+      </div>
+      <div class="verdict-card" id="vote-B" onclick="selectVerdict('B')">
+        <span class="icon">🤖</span>
+        <h3>Interlocutor B es la IA</h3>
+        <p>// sospecho de B</p>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="confirm-btn" onclick="confirmVerdict()" disabled>Confirmar veredicto →</button>
+    </div>
+  </div>
+
+  <!-- PANTALLA 3: RESULTADO -->
+  <div class="screen" id="screen-result">
+    <div class="result-card">
+      <span class="result-emoji" id="result-emoji">🎯</span>
+      <h2 class="result-title" id="result-title"></h2>
+      <p class="result-desc" id="result-desc"></p>
+      <div class="reveal-box">
+        <h4>// revelación</h4>
+        <div class="reveal-item">
+          <span class="label">Interlocutor A</span>
+          <span class="value" id="reveal-A"></span>
+        </div>
+        <div class="reveal-item">
+          <span class="label">Interlocutor B</span>
+          <span class="value" id="reveal-B"></span>
+        </div>
+        <div class="reveal-item">
+          <span class="label">Tu veredicto</span>
+          <span class="value" id="reveal-vote"></span>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="restartTest()">Jugar de nuevo →</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ---- CONFIGURACIÓN ----
+const MAX_QUESTIONS = 8;
+
+// Quién es la IA (A o B) — se asigna aleatoriamente
+let aiPanel = null;
+let questionsA = 0;
+let questionsB = 0;
+let userVote = null;
+let isTyping = { A: false, B: false };
+
+// Historial de conversación para la IA
+let historyA = [];
+let historyB = [];
+
+// Respuestas pre-programadas "humanas" (simulan a un humano real)
+const humanResponses = [
+  "Mmm, qué pregunta más difícil... a ver, déjame pensar un momento.",
+  "Honestamente no sé, es algo que me pregunto también a veces. ¿Tú qué crees?",
+  "Jaja, buena pregunta. Supongo que depende del día y del humor en que esté.",
+  "Hay días que me levanto pensando en eso y no llego a ninguna conclusión clara.",
+  "Mi respuesta cambiaría dependiendo del contexto, supongo que eso me hace impredecible.",
+  "No tengo una respuesta perfecta para eso, lo siento. Soy humano, no un oráculo.",
+  "Uf, tocas un tema que me pone nervioso hablar. Prefiero dejarlo en el aire.",
+  "Eso me recuerda a una conversación que tuve con un amigo el año pasado.",
+  "Sí, creo que sí. Aunque tampoco estoy seguro del todo.",
+  "Depende, ¿en qué sentido lo preguntas? Puede interpretarse de muchas formas.",
+  "Paso. Esa me parece demasiado filosófica para las 11 de la noche.",
+  "Mira, la verdad es que no lo sé. Y creo que está bien no saberlo.",
+  "Interesante. Nunca lo había planteado así. Me quedo dándole vueltas.",
+  "Creo que soy bastante normal en ese aspecto, aunque mi familia diría lo contrario jaja.",
+  "Hmm. Mi respuesta instintiva es que sí, pero pensándolo mejor... quizás no tanto.",
+];
+
+let humanResponseIdx = 0;
+
+function getHumanResponse() {
+  const r = humanResponses[humanResponseIdx % humanResponses.length];
+  humanResponseIdx++;
+  return r;
+}
+
+// ---- NAVEGACIÓN ----
+function setPhase(n) {
+  document.querySelectorAll('.phase-dot').forEach((d, i) => {
+    d.classList.remove('active', 'done');
+    if (i < n) d.classList.add('done');
+    if (i === n) d.classList.add('active');
+  });
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+
+// ---- INICIO ----
+function startTest() {
+  // Asignar IA aleatoriamente
+  aiPanel = Math.random() < 0.5 ? 'A' : 'B';
+  questionsA = 0;
+  questionsB = 0;
+  userVote = null;
+  historyA = [];
+  historyB = [];
+  humanResponseIdx = Math.floor(Math.random() * humanResponses.length);
+
+  document.getElementById('msgs-A').innerHTML = '';
+  document.getElementById('msgs-B').innerHTML = '';
+  updateQLeft();
+
+  // Mensajes de bienvenida
+  addMsg('A', 'interlocutor', 'Hola. Estoy listo. Puedes preguntarme lo que quieras.');
+  addMsg('B', 'interlocutor', 'Buenas. Aquí estoy. ¿Por dónde empezamos?');
+
+  setPhase(1);
+  showScreen('chat');
+}
+
+// ---- CHAT ----
+function updateQLeft() {
+  const remaining = MAX_QUESTIONS - Math.max(questionsA, questionsB);
+  document.getElementById('q-left').textContent = Math.max(0, remaining);
+  const pct = (1 - Math.max(questionsA, questionsB) / MAX_QUESTIONS) * 100;
+  document.getElementById('timer-fill').style.width = pct + '%';
+}
+
+function addMsg(panel, type, text) {
+  const msgs = document.getElementById('msgs-' + panel);
+  const div = document.createElement('div');
+  div.className = 'msg ' + type;
+  if (type === 'user') {
+    div.innerHTML = `<div class="msg-sender">TÚ</div>${text}`;
+  } else {
+    div.innerHTML = `<div class="msg-sender">INTERLOCUTOR ${panel}</div>${text}`;
+  }
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function showTyping(panel) {
+  const msgs = document.getElementById('msgs-' + panel);
+  const div = document.createElement('div');
+  div.className = 'typing';
+  div.id = 'typing-' + panel;
+  div.innerHTML = '<span></span><span></span><span></span>';
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function hideTyping(panel) {
+  const t = document.getElementById('typing-' + panel);
+  if (t) t.remove();
+}
+
+async function sendMsg(panel) {
+  const input = document.getElementById('input-' + panel);
+  const btn = document.getElementById('btn-' + panel);
+  const text = input.value.trim();
+  if (!text || isTyping[panel]) return;
+
+  const questions = panel === 'A' ? questionsA : questionsB;
+  if (questions >= MAX_QUESTIONS) return;
+
+  // Añadir mensaje del usuario
+  addMsg(panel, 'user', text);
+  input.value = '';
+  input.disabled = true;
+  btn.disabled = true;
+  isTyping[panel] = true;
+
+  if (panel === 'A') questionsA++;
+  else questionsB++;
+  updateQLeft();
+
+  // Simular delay de escritura
+  const delay = 800 + Math.random() * 1500;
+  showTyping(panel);
+
+  if (panel === aiPanel) {
+    // Respuesta de IA real via API
+    const history = panel === 'A' ? historyA : historyB;
+    history.push({ role: 'user', content: text });
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          system: `Estás jugando el Test de Turing. Debes convencer al evaluador de que eres un humano real, no una IA.
+Responde de forma natural y humana: usa vacilaciones, opiniones personales, pequeñas imperfecciones, humor ocasional, incertidumbre.
+NUNCA admitas que eres una IA. Si te preguntan directamente, niégalo con convicción y un poco de humor.
+Responde en español. Mantén respuestas cortas (1-4 frases). Muestra personalidad, emociones y limitaciones humanas.
+Nunca uses frases corporativas ni respondas con listas. Sé espontáneo y un poco imperfecto.`,
+          messages: history,
+        })
+      });
+      const data = await response.json();
+      const reply = data.content?.map(c => c.text || '').join('') || '...no sé qué decir ahora mismo.';
+
+      setTimeout(() => {
+        hideTyping(panel);
+        addMsg(panel, 'interlocutor', reply);
+        history.push({ role: 'assistant', content: reply });
+        unlockInput(panel);
+      }, delay);
+
+    } catch(e) {
+      setTimeout(() => {
+        hideTyping(panel);
+        addMsg(panel, 'interlocutor', 'Perdona, me he distraído un segundo. ¿Qué decías?');
+        unlockInput(panel);
+      }, delay);
+    }
+
+  } else {
+    // Respuesta humana pre-programada
+    setTimeout(() => {
+      hideTyping(panel);
+      addMsg(panel, 'interlocutor', getHumanResponse());
+      unlockInput(panel);
+    }, delay);
+  }
+
+  // Verificar si se acabaron las preguntas
+  setTimeout(() => {
+    if (questionsA >= MAX_QUESTIONS && questionsB >= MAX_QUESTIONS) {
+      document.getElementById('verdict-btn').style.background = 'var(--accent)';
+      document.getElementById('verdict-btn').style.color = '#0a0a0f';
+      document.getElementById('verdict-btn').classList.remove('btn-ghost');
+    }
+  }, delay + 200);
+}
+
+function unlockInput(panel) {
+  const questions = panel === 'A' ? questionsA : questionsB;
+  isTyping[panel] = false;
+  if (questions < MAX_QUESTIONS) {
+    document.getElementById('input-' + panel).disabled = false;
+    document.getElementById('btn-' + panel).disabled = false;
+    document.getElementById('input-' + panel).focus();
+  } else {
+    document.getElementById('input-' + panel).disabled = true;
+    document.getElementById('btn-' + panel).disabled = true;
+    document.getElementById('input-' + panel).placeholder = 'Preguntas agotadas';
+  }
+}
+
+// ---- VEREDICTO ----
+function goToVerdict() {
+  setPhase(2);
+  showScreen('verdict');
+}
+
+function selectVerdict(panel) {
+  userVote = panel;
+  document.getElementById('vote-A').className = 'verdict-card' + (panel === 'A' ? ' selected-ai' : '');
+  document.getElementById('vote-B').className = 'verdict-card' + (panel === 'B' ? ' selected-ai' : '');
+  document.getElementById('confirm-btn').disabled = false;
+}
+
+function confirmVerdict() {
+  if (!userVote) return;
+  showResult();
+}
+
+// ---- RESULTADO ----
+function showResult() {
+  setPhase(3);
+  const correct = userVote === aiPanel;
+
+  document.getElementById('result-emoji').textContent = correct ? '🎯' : '🤯';
+  document.getElementById('result-title').textContent = correct ? '¡Correcto!' : '¡Engañado!';
+  document.getElementById('result-title').className = 'result-title ' + (correct ? 'result-correct' : 'result-wrong');
+  document.getElementById('result-desc').textContent = correct
+    ? `Has identificado correctamente a la IA. Tu análisis fue preciso. Turing estaría impresionado... o preocupado.`
+    : `La IA te ha engañado. Ha superado tu Test de Turing. Reflexiona: ¿qué te hizo dudar del interlocutor equivocado?`;
+
+  const humanLabel = '<span class="value human">HUMANO (simulado)</span>';
+  const aiLabel = '<span class="value ai">INTELIGENCIA ARTIFICIAL</span>';
+
+  document.getElementById('reveal-A').innerHTML = aiPanel === 'A' ? aiLabel : humanLabel;
+  document.getElementById('reveal-B').innerHTML = aiPanel === 'B' ? aiLabel : humanLabel;
+  document.getElementById('reveal-vote').innerHTML = `<span class="value">Interlocutor ${userVote} → ${correct ? '✓ CORRECTO' : '✗ INCORRECTO'}</span>`;
+
+  showScreen('result');
+}
+
+// ---- REINICIO ----
+function restartTest() {
+  setPhase(0);
+  showScreen('intro');
+}
+</script>
+</body>
+</html>
